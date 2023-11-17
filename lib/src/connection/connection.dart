@@ -1,3 +1,3 @@
 class Connection{
-  String conn = "0.tcp.in.ngrok.io:11848";
+  String conn = "10.0.2.2:8765";
 }

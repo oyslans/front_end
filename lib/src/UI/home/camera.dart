@@ -167,7 +167,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
   Future<void> initializeCamera() async {
     final cameras = await availableCameras();
-    final firstCamera = cameras[1];
+    final firstCamera = cameras[0];
 
     controller = CameraController(
       firstCamera,
@@ -204,7 +204,14 @@ class _CameraScreenState extends State<CameraScreen> {
           isLoaded = true;
         });
       }
-      if (data['lastatt'] == "Sign-in") {
+      if (data['lastatt'] == "") {
+        setState(() {
+          isSignInShow = false;
+          isSignOutShow = false;
+          isLunchInShow = false;
+          isLunchOutShow = false;
+        });
+      } else if (data['lastatt'] == "Sign-in") {
         setState(() {
           isSignInShow = false;
           isSignOutShow = true;
