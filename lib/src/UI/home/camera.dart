@@ -81,6 +81,19 @@ class _CameraScreenState extends State<CameraScreen> {
 
       case DetectionStatus.success:
         setState(() {
+          print("succcess");
+          print("succcess");
+          print("succcess");
+          print("succcess");
+          print("succcess");
+          print("succcess");
+          print("succcess");
+          print("succcess");
+          print("succcess");
+          print("succcess");
+          print("succcess");
+          print("succcess");
+          print("succcess");
           isAllButtonsVisible = true;
         });
         channel.sink.close();
@@ -89,6 +102,7 @@ class _CameraScreenState extends State<CameraScreen> {
           initializeWebSocket();
           setState(() {
             isAllButtonsVisible = false;
+            isClicked = false;
           });
           // if (status == DetectionStatus.success) {
           //   return name;
