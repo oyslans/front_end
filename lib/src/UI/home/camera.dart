@@ -37,6 +37,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
   late String buttonValue;
   bool isClicked = false;
+  bool isScanButtonClicked = false;
   bool isScanButtonVisible = true;
   bool isAllButtonsVisible = false;
   bool isSignInShow = false;
@@ -64,7 +65,13 @@ class _CameraScreenState extends State<CameraScreen> {
         isAllButtonsVisible = false;
         isClicked = false;
       });
-      return "Scanning";
+      if (isScanButtonClicked==true){
+        return "Scanning ..";
+      }
+      else {
+        return "";
+      }
+
     }
     switch (status!) {
       case DetectionStatus.noFace:
@@ -81,38 +88,26 @@ class _CameraScreenState extends State<CameraScreen> {
 
       case DetectionStatus.success:
         setState(() {
-          print("succcess");
-          print("succcess");
-          print("succcess");
-          print("succcess");
-          print("succcess");
-          print("succcess");
-          print("succcess");
-          print("succcess");
-          print("succcess");
-          print("succcess");
-          print("succcess");
-          print("succcess");
-          print("succcess");
           isAllButtonsVisible = true;
         });
-        channel.sink.close();
-        if (isClicked == true) {
-          retakePicture();
-          initializeWebSocket();
-          setState(() {
-            isAllButtonsVisible = false;
-            isClicked = false;
-          });
-          // if (status == DetectionStatus.success) {
-          //   return name;
-          // } else {
-          //   return "Scanning";
-          // }
-          return "";
-        } else {
-          return name;
-        }
+
+        // if (isClicked == true) {
+        //   // retakePicture();
+        //   initializeWebSocket();
+        //   setState(() {
+        //     isAllButtonsVisible = false;
+        //     isClicked = false;
+        //   });
+        //   // if (status == DetectionStatus.success) {
+        //   //   return name;
+        //   // } else {
+        //   //   return "Scanning";
+        //   // }
+        //   return "";
+        // } else {
+        //   return name;
+        // }
+        return name;
 
       case DetectionStatus.scan:
         setState(() {
@@ -150,10 +145,23 @@ class _CameraScreenState extends State<CameraScreen> {
   Future<void> takePicture() async {
     Timer.periodic(const Duration(seconds: 5), (timer) async {
       try {
-        final image = await controller!.takePicture();
-        final compressedImageBytes = compressImage(image.path);
-        channel.sink.add(compressedImageBytes);
-        channel.sink.add(buttonValue);
+        if (status!=DetectionStatus.success){
+          final image = await controller!.takePicture();
+          final compressedImageBytes = compressImage(image.path);
+          channel.sink.add(compressedImageBytes);
+          channel.sink.add(buttonValue);
+        }
+        if (isClicked==true){
+          print('test');
+          timer.cancel();
+          channel.sink.add(buttonValue);
+        }
+
+
+        // controller!.dispose();
+
+        // channel.sink.add("Lunch-out");
+        // channel.sink.add("buttonValue2");
 
         setState(() {
           buttonValue = '';
@@ -168,6 +176,7 @@ class _CameraScreenState extends State<CameraScreen> {
     Timer.periodic(const Duration(seconds: 5), (timer) async {
       try {
         final image = await controller!.takePicture();
+        // controller!.dispose();
         final compressedImageBytes = compressImage(image.path);
         channel.sink.add(compressedImageBytes);
         channel.sink.add(buttonValue);
@@ -177,6 +186,16 @@ class _CameraScreenState extends State<CameraScreen> {
         });
       } catch (_) {}
     });
+  }
+  Future<void> attendanceRecorder() async {
+    // channel = IOWebSocketChannel.connect('ws://${connection.conn}');
+      try {
+        channel.sink.add(buttonValue);
+        setState(() {
+          buttonValue = '';
+          channel.sink.close();
+        });
+      } catch (_) {}
   }
 
   Future<void> initializeCamera() async {
@@ -200,16 +219,6 @@ class _CameraScreenState extends State<CameraScreen> {
       debugPrint(data);
       data = jsonDecode(data);
 
-      print(data['data']);
-      print(data['data']);
-      print(data['data']);
-      print(data['data']);
-      print(data['data']);
-      print(data['data']);
-      print(data['data']);
-      print(data['data']);
-      print(data['data']);
-
       if (data['data'] == null) {
         debugPrint('Server error occurred in recognizing face');
         return;
@@ -218,51 +227,10 @@ class _CameraScreenState extends State<CameraScreen> {
           isLoaded = true;
         });
       }
-      if (data['lastatt'] == "") {
-        setState(() {
-          isSignInShow = false;
-          isSignOutShow = false;
-          isLunchInShow = false;
-          isLunchOutShow = false;
-        });
-      } else if (data['lastatt'] == "Sign-in") {
-        setState(() {
-          isSignInShow = false;
-          isSignOutShow = true;
-          isLunchInShow = false;
-          isLunchOutShow = true;
-        });
-      } else if (data['lastatt'] == null) {
-        setState(() {
-          isSignInShow = true;
-          isSignOutShow = false;
-          isLunchInShow = false;
-          isLunchOutShow = false;
-        });
-      } else if (data['lastatt'] == "Sign-out") {
-        setState(() {
-          isSignInShow = true;
-          isSignOutShow = false;
-          isLunchInShow = false;
-          isLunchOutShow = false;
-        });
-      } else if (data['lastatt'] == "Lunch-in") {
-        setState(() {
-          isSignInShow = false;
-          isSignOutShow = true;
-          isLunchInShow = false;
-          isLunchOutShow = false;
-        });
-      } else if (data['lastatt'] == "Lunch-out") {
-        setState(() {
-          isSignInShow = false;
-          isSignOutShow = true;
-          isLunchInShow = true;
-          isLunchOutShow = false;
-        });
-      }
+
       name = data["name"];
       // print("test : $data['status']");
+
       switch (data['data']) {
         case 0:
           status = DetectionStatus.noFace;
@@ -272,6 +240,51 @@ class _CameraScreenState extends State<CameraScreen> {
           break;
         case 2:
           status = DetectionStatus.success;
+          channel.sink.close();
+          if (data['lastatt'] == "") {
+            setState(() {
+              isSignInShow = false;
+              isSignOutShow = false;
+              isLunchInShow = false;
+              isLunchOutShow = false;
+            });
+          } else if (data['lastatt'] == "Sign-in") {
+            setState(() {
+              isSignInShow = false;
+              isSignOutShow = true;
+              isLunchInShow = false;
+              isLunchOutShow = true;
+            });
+          } else if (data['lastatt'] == null) {
+            setState(() {
+              isSignInShow = true;
+              isSignOutShow = false;
+              isLunchInShow = false;
+              isLunchOutShow = false;
+            });
+          } else if (data['lastatt'] == "Sign-out") {
+            setState(() {
+              isSignInShow = true;
+              isSignOutShow = false;
+              isLunchInShow = false;
+              isLunchOutShow = false;
+            });
+          } else if (data['lastatt'] == "Lunch-in") {
+            setState(() {
+              isSignInShow = false;
+              isSignOutShow = true;
+              isLunchInShow = false;
+              isLunchOutShow = false;
+            });
+          } else if (data['lastatt'] == "Lunch-out") {
+            setState(() {
+              isSignInShow = false;
+              isSignOutShow = true;
+              isLunchInShow = true;
+              isLunchOutShow = false;
+            });
+          }
+
           break;
         case 3:
           status = DetectionStatus.scan;
@@ -396,12 +409,15 @@ class _CameraScreenState extends State<CameraScreen> {
       visible: isVisible,
       child: ElevatedButton(
         onPressed: () {
-          retakePicture();
           setState(() {
             buttonValue = text;
             isClicked = true;
             isAllButtonsVisible = false;
+            isScanButtonVisible = true;
+            isScanButtonClicked = false;
+            status=null;
           });
+          takePicture();
         },
         style: ElevatedButton.styleFrom(
             minimumSize: const Size(130, 50),
@@ -429,6 +445,7 @@ class _CameraScreenState extends State<CameraScreen> {
         takePicture();
         setState(() {
           isScanButtonVisible = false;
+          isScanButtonClicked=true;
         });
       },
       style: ElevatedButton.styleFrom(
