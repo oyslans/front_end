@@ -36,6 +36,7 @@ class _CameraScreenState extends State<CameraScreen> {
   ///============================
 
   late String buttonValue;
+  bool isDetected = false;
   bool isClicked = false;
   bool isScanButtonClicked = false;
   bool isScanButtonVisible = true;
@@ -56,7 +57,6 @@ class _CameraScreenState extends State<CameraScreen> {
   Color primary = const Color(0xFF000000);
   CameraController? controller;
   late WebSocketChannel channel;
-  late WebSocketChannel channel2;
   DetectionStatus? status;
 
   String get currentStatus {
@@ -87,9 +87,7 @@ class _CameraScreenState extends State<CameraScreen> {
         return "Attendance already marked";
 
       case DetectionStatus.success:
-        setState(() {
-          isAllButtonsVisible = true;
-        });
+
 
         // if (isClicked == true) {
         //   // retakePicture();
@@ -138,24 +136,42 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
-  void stopWebsocket() {
-    channel.sink.close();
-  }
 
+  Future<void> sendAttendance() async {
+    channel = IOWebSocketChannel.connect('ws://${connection.conn}');
+    channel.sink.add(buttonValue);
+    status=null;
+    setState(() {
+      channel.sink.close();
+      status=null;
+      isDetected =false;
+      buttonValue = '';
+    });
+  }
   Future<void> takePicture() async {
     Timer.periodic(const Duration(seconds: 5), (timer) async {
       try {
-        if (status!=DetectionStatus.success){
-          final image = await controller!.takePicture();
-          final compressedImageBytes = compressImage(image.path);
-          channel.sink.add(compressedImageBytes);
-          channel.sink.add(buttonValue);
-        }
-        if (isClicked==true){
-          print('test');
-          timer.cancel();
-          channel.sink.add(buttonValue);
-        }
+          if (status==DetectionStatus.success){
+            channel.sink.close();
+            timer.cancel();
+          }
+          else{
+            initializeWebSocket();
+            final image = await controller!.takePicture();
+            final compressedImageBytes = compressImage(image.path);
+            channel.sink.add(compressedImageBytes);
+          }
+
+
+        // if (isClicked==true){
+        //   channel.sink.add(buttonValue);
+        //   status=null;
+        // }
+        // if (){
+        //   print('test');
+        //   timer.cancel();
+        //   channel.sink.add(buttonValue);
+        // }
 
 
         // controller!.dispose();
@@ -163,9 +179,6 @@ class _CameraScreenState extends State<CameraScreen> {
         // channel.sink.add("Lunch-out");
         // channel.sink.add("buttonValue2");
 
-        setState(() {
-          buttonValue = '';
-        });
       } catch (_) {}
     });
   }
@@ -173,7 +186,7 @@ class _CameraScreenState extends State<CameraScreen> {
   Connection connection = Connection();
   Future<void> retakePicture() async {
     channel = IOWebSocketChannel.connect('ws://${connection.conn}');
-    Timer.periodic(const Duration(seconds: 5), (timer) async {
+    Timer.periodic(const Duration(seconds: 10), (timer) async {
       try {
         final image = await controller!.takePicture();
         // controller!.dispose();
@@ -212,6 +225,9 @@ class _CameraScreenState extends State<CameraScreen> {
     await controller!.initialize();
     setState(() {});
   }
+  void makeConnection(){
+    channel = IOWebSocketChannel.connect('ws://${connection.conn}');
+  }
 
   void initializeWebSocket() {
     channel = IOWebSocketChannel.connect('ws://${connection.conn}');
@@ -234,13 +250,25 @@ class _CameraScreenState extends State<CameraScreen> {
       switch (data['data']) {
         case 0:
           status = DetectionStatus.noFace;
+          setState(() {
+            isDetected=false;
+          });
           break;
         case 1:
           status = DetectionStatus.fail;
+          setState(() {
+            isDetected=false;
+          });
           break;
         case 2:
           status = DetectionStatus.success;
-          channel.sink.close();
+          setState(() {
+            isDetected=true;
+            channel.sink.close();
+            isAllButtonsVisible = true;
+          });
+          takePicture();
+
           if (data['lastatt'] == "") {
             setState(() {
               isSignInShow = false;
@@ -288,12 +316,21 @@ class _CameraScreenState extends State<CameraScreen> {
           break;
         case 3:
           status = DetectionStatus.scan;
+          setState(() {
+            isDetected=false;
+          });
           break;
         case 4:
           status = DetectionStatus.noRecog;
+          setState(() {
+            isDetected=false;
+          });
           break;
         default:
           status = DetectionStatus.noFace;
+          setState(() {
+            isDetected=false;
+          });
           break;
       }
       setState(() {});
@@ -415,9 +452,10 @@ class _CameraScreenState extends State<CameraScreen> {
             isAllButtonsVisible = false;
             isScanButtonVisible = true;
             isScanButtonClicked = false;
-            status=null;
           });
-          takePicture();
+          sendAttendance();
+          // takePicture();
+
         },
         style: ElevatedButton.styleFrom(
             minimumSize: const Size(130, 50),
@@ -442,11 +480,12 @@ class _CameraScreenState extends State<CameraScreen> {
   Widget _scanNow() {
     return ElevatedButton(
       onPressed: () {
-        takePicture();
         setState(() {
           isScanButtonVisible = false;
           isScanButtonClicked=true;
+          status=null;
         });
+        takePicture();
       },
       style: ElevatedButton.styleFrom(
           minimumSize: const Size(130, 50),
